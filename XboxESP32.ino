@@ -249,33 +249,22 @@ void processControllers() {
 
 void doMotorFunction(){
     for(auto myController : myControllers){
-        int32_t throttle = myController->throttle();
-        int32_t brake = myController->brake();
-        int32_t joy = myController->axisY();
+        if (myController && myController->isConnected() && myController->hasData()){
+             int32_t throttle = myController->throttle();
+            int32_t brake = myController->brake();
 
-        //THROTTLE
-        if(throttle > 0){
-            //do forward
-            forwardMotion(myController);
-        } else if(brake > 0){
-            //do reverse
-            reverseMotion(myController);
-        } else if(throttle > 0 && brake > 0){
-            //do nothing, analogWrite() 0; 
-            standStill();
-        } 
-
-        //JOYSTICK
-        if(joy > 0){
-            //do forward
-            forwardMotion(myController);
-        } else if(joy < 0){
-            //do reverse (negative joy)
-            reverseMotion(myController);
-        } else if(/*anything in between the joystick idle deadzone, letsay +/- 5*/false) {
-            //stay at analogWrite() 0; 
-            //We will have to account for this later, instead of 0 to 1023, now 5 to 1023
-            standStill();
+            //THROTTLE
+            if (throttle > 0 && brake > 0) {
+                standStill();
+            } else if (throttle > 0) {
+                forwardMotion(myController);
+                Serial.println("MOVING FORWARD");
+            } else if (brake > 0) {
+                reverseMotion(myController);
+                Serial.println("MOVING REVERSE");
+            } else {
+                standStill();
+            }
         }
     }
 }
@@ -286,12 +275,15 @@ void setup() {
     //PINS
     pinMode(Left_S8550_PIN, OUTPUT);
     digitalWrite(Left_S8550_PIN, HIGH);
+
     pinMode(Right_S8550_PIN, OUTPUT);
     digitalWrite(Right_S8550_PIN, HIGH);
+
     pinMode(Left_S8050_PIN, OUTPUT);
     digitalWrite(Left_S8050_PIN, LOW);
-    pinMode(Left_S8050_PIN, OUTPUT);
-    digitalWrite(Left_S8050_PIN, LOW);
+
+    pinMode(Right_S8050_PIN, OUTPUT);
+    digitalWrite(Right_S8050_PIN, LOW);
 
     Serial.begin(115200);
     Serial.printf("Firmware: %s\n", BP32.firmwareVersion());
@@ -321,9 +313,11 @@ void loop() {
     // This call fetches all the controllers' data.
     // Call this function in your main loop.
     bool dataUpdated = BP32.update();
-    if (dataUpdated)
+    if (dataUpdated){
         processControllers();
         doMotorFunction();
+    }
+        
 
     // The main loop must have some kind of "yield to lower priority task" event.
     // Otherwise, the watchdog will get triggered.
